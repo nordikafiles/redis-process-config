@@ -5,6 +5,7 @@
   "license": "MIT",
   "dependencies": {
     "async-redis": "^1.1.7",
+    "lodash": "^4.17.20",
     "sleep-promise": "^9.0.0"
   }
 }
