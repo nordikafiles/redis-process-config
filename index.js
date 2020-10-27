@@ -77,7 +77,9 @@ class RedisProcessManager {
         this.keyPrefix = keyPrefix
     }
 
-    async setConfig(id, value = {}) {
+    async setConfig(id, value = {}, force=false) {
+        if (force)
+            return this.client.set(`${this.keyPrefix}:${this.id}:config`, JSON.stringify(value))
         let res = await this.client.eval(`
             local status = redis.call('EXISTS', KEYS[1] .. ':' .. KEYS[2] .. ':status')
             if status > 0 then
@@ -90,7 +92,9 @@ class RedisProcessManager {
             throw new Error(`Can't change config because some process is using it`)
     }
 
-    async removeConfig(id) {
+    async removeConfig(id, force=false) {
+        if (force)
+            return this.client.del(`${this.keyPrefix}:${this.id}:config`)
         let res = await this.client.eval(`
             local status = redis.call('EXISTS', KEYS[1] .. ':' .. KEYS[2] .. ':status')
             if status == 0 then
