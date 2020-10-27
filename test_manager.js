@@ -10,11 +10,19 @@ async function contentFunc () {
     //     id: process.id,
     //     config: process.config
     // })
-    await manager.setConfig('alalaher', { blabla: 'tralala' })
     let configs = await manager.listConfigs()
     console.log({ configs })
+    await manager.setConfig('alalaher', { blabla: 'tralala' })
+    configs = await manager.listConfigs()
+    console.log({ configs })
     await sleep(3000)
-    await manager.removeConfig('alalaher')
+    try {
+
+        await manager.removeConfig('alalaher')
+    } catch (err) {
+        console.log(err.toString())
+        await manager.removeConfig('alalaher', true)
+    }
     configs = await manager.listConfigs()
     console.log({ configs })
 }
