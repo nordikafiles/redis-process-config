@@ -12,6 +12,6 @@
     "mocha": "^8.2.0"
   },
   "scripts": {
-    "test": "mocha --timeout 50000"
+    "test": "mocha --timeout 50000 --exit"
   }
 }
