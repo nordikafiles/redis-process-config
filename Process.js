@@ -106,6 +106,17 @@ class Process extends EventEmitter {
     await this.producer.connect();
   }
 
+  async publishMessage(topic, messages = [], headers = {}) {
+    if (!Array.isArray(messages)) messages = [messages];
+    return this.producer.send({
+      topic,
+      messages: messages.map((x) => ({
+        value: JSON.stringify(x),
+        headers,
+      })),
+    });
+  }
+
   async heartbeat() {
     process.env.NODE_ENV == "debug" && console.debug("running setex...");
     await this.redisClient.setex(

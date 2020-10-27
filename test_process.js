@@ -1,5 +1,5 @@
 const sleep = require("sleep-promise");
-const { Process } = require("./v2");
+const { Process } = require(".");
 
 const { Kafka } = require("kafkajs");
 
@@ -9,11 +9,12 @@ const kafka = new Kafka({
 });
 
 let p = Process.fromFunction(
-  async ({ logger, setOnBeforeStop, stop }) => {
+  async ({ logger, setOnBeforeStop, stop, publishMessage }) => {
     logger.info("alala");
     setOnBeforeStop(() => {
       logger.info("blabla");
     });
+    await publishMessage("alalaher", { test: "message" });
     await sleep(5000);
     stop();
   },

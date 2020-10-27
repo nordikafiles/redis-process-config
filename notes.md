@@ -1,10 +1,14 @@
 ```js
-module.exports = async ({ logger, config, id, releaseConfig, kafkaPublisher, setOnBeforeStop }) => {
+module.exports = async ({ logger, config, id, releaseConfig, kafkaPublisher, setOnBeforeStop, kafka, producer }) => {
   logger.info('got config', config)
   wsConnection.on('message', (message) => {
     kafkaPublisher.send('newitems_go', message)
   })
+  // await producer.send()
+  const consumer = kafka.consumer()
+  await consumer.connect()
   setOnBeforeStop(() => {
+    await consumer.disconnect()
     await stopSomething()
   })
 }
