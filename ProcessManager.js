@@ -3,7 +3,7 @@ const redis = require("async-redis");
 const sleep = require("sleep-promise");
 const _ = require("lodash");
 
-class RedisProcessManager {
+class ProcessManager {
   constructor(redisConfig = {}, { keyPrefix = "rprocesses" } = {}) {
     this.client = redis.createClient(redisConfig);
     this.keyPrefix = keyPrefix;

@@ -1,12 +1,21 @@
-const RedisProcess = require(".");
+const { Process } = require("./v2");
 
-let process = new RedisProcess()
+let p = new Process();
 
-async function contentFunc () {
-    await process.takeConfig()
-    console.log({
-        id: process.id,
-        config: process.config
-    })
-}
-contentFunc()
+// async function contentFunc () {
+//     await p.takeConfig()
+//     console.log({
+//         id: p.id,
+//         config: p.config
+//     })
+// }
+// contentFunc()
+
+p.run().then(
+  () => {
+    console.log("initialized");
+  },
+  (err) => {
+    console.error(err);
+  }
+);

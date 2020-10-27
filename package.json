@@ -6,7 +6,8 @@
   "dependencies": {
     "async-redis": "^1.1.7",
     "lodash": "^4.17.20",
-    "sleep-promise": "^9.0.0"
+    "sleep-promise": "^9.0.0",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
     "mocha": "^8.2.0"

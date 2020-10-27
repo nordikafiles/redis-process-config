@@ -2,6 +2,7 @@ const EventEmitter = require("events");
 const redis = require("async-redis");
 const sleep = require("sleep-promise");
 const _ = require("lodash");
+const winston = require("winston");
 
 class Process extends EventEmitter {
   constructor({
@@ -10,6 +11,7 @@ class Process extends EventEmitter {
     keyPrefix = "rprocesses",
     kafkaConfig = {},
   } = {}) {
+    super();
     this.redisConfig = redisConfig;
     this.expTime = expTime;
     this.keyPrefix = keyPrefix;
@@ -30,7 +32,7 @@ class Process extends EventEmitter {
     }
     process.env.NODE_ENV == "debug" && console.debug("waiting for config");
     while (true) {
-      let res = await this.client.eval(
+      let res = await this.redisClient.eval(
         `
                 local process_config_keys = redis.call('KEYS', KEYS[1] .. ':*:config')
                 local process_status_keys = redis.call('KEYS', KEYS[1] .. ':*:status')
@@ -53,7 +55,7 @@ class Process extends EventEmitter {
         3,
         this.keyPrefix,
         this.expTime,
-        JSON.stringify(initialStatus)
+        JSON.stringify(this.status)
       );
       if (res) {
         let [id, config] = res;
@@ -73,7 +75,7 @@ class Process extends EventEmitter {
 
   async heartbeat() {
     process.env.NODE_ENV == "debug" && console.debug("running setex...");
-    await this.client.setex(
+    await this.redisClient.setex(
       `${this.keyPrefix}:${this.id}:status`,
       this.expTime,
       JSON.stringify(this.status)
@@ -90,7 +92,7 @@ class Process extends EventEmitter {
       console.debug("clearing heartbeat interval...");
     clearInterval(this.heartbeatInterval);
     process.env.NODE_ENV == "debug" && console.debug("deleting flag...");
-    await this.client.del(`${this.keyPrefix}:${this.id}:status`);
+    await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     this.id = null;
     this.config = null;
   }
@@ -100,11 +102,29 @@ class Process extends EventEmitter {
     await this.heartbeat();
   }
 
-  async init() {}
+  async init() {
+    this.logger.info("test");
+    this.logger.warn("test warning");
+  }
 
   async run() {
     try {
       await this.takeConfig();
+      this.logger = winston.createLogger({
+        level: "info",
+        format: winston.format.json(),
+        defaultMeta: { processId: this.id },
+
+        transports: [
+          new winston.transports.Console({
+            level: "info",
+            format: winston.format.combine(
+              winston.format.simple(),
+              winston.format.colorize()
+            ),
+          }),
+        ],
+      });
       await this.init(this);
     } catch (err) {
       console.warn(`Can't initialize process!`, err);
