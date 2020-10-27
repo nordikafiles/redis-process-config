@@ -104,6 +104,11 @@ class ProcessManager {
   stop(id) {
     return this.sendMessageToProcess(id, { type: "stop" });
   }
+
+  async removeProcess(id) {
+    await this.removeConfig(id, true);
+    await this.stop(id);
+  }
 }
 
 module.exports = ProcessManager;

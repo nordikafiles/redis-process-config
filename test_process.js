@@ -1,21 +1,23 @@
+const sleep = require("sleep-promise");
 const { Process } = require("./v2");
 
-let p = new Process();
+const { Kafka } = require("kafkajs");
 
-// async function contentFunc () {
-//     await p.takeConfig()
-//     console.log({
-//         id: p.id,
-//         config: p.config
-//     })
-// }
-// contentFunc()
+const kafka = new Kafka({
+  clientId: "my-app",
+  brokers: ["localhost:9092"],
+});
 
-p.run().then(
-  () => {
-    console.log("initialized");
+let p = Process.fromFunction(
+  async ({ logger, setOnBeforeStop, stop }) => {
+    logger.info("alala");
+    setOnBeforeStop(() => {
+      logger.info("blabla");
+    });
+    await sleep(5000);
+    stop();
   },
-  (err) => {
-    console.error(err);
-  }
+  { kafka }
 );
+
+p.run();

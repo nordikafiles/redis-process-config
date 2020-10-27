@@ -9,14 +9,23 @@ module.exports = async ({ logger, config, id, releaseConfig, kafkaPublisher, set
   })
 }
 
-const myProcess = Process.from_function(require('./myFunc.js'), { redis, kafka, ... })
+const myProcess = Process.fromFunction(require('./myFunc.js'), { redis, kafka, ... })
 
 myProcess.run()
 ```
 
-#todo
+**todo**
 
-- process control: stop, restart, etc
-- addSafeStopHook
-- kafka logger
-- kafkaPublisher
+- process control:
+  - stop and remove config `done`
+  - stop `done`
+  - restart `done`
+  - etc
+- setOnBeforeStop `done`
+- kafka logger `done`
+- kafkaPublisher `done`
+- fromFunction
+
+**events**
+
+- controlMessage `done`

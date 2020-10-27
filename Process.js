@@ -21,7 +21,6 @@ class Process extends EventEmitter {
     this.keyPrefix = keyPrefix;
 
     this.redisClient = redis.createClient(redisConfig);
-    this.redisControlSubscriber = redis.createClient(redisConfig);
 
     this.id = null;
     this.config = null;
@@ -37,8 +36,6 @@ class Process extends EventEmitter {
   }
 
   async takeConfig() {
-    if (this.isNotUsable)
-      throw new Error("Process instance is not usable anymore");
     if (this.id) {
       return this.config;
     }
@@ -79,6 +76,7 @@ class Process extends EventEmitter {
         }
         process.env.NODE_ENV == "debug" && console.debug("received config");
         await this.initControlSubscriber();
+        await this.initProducer();
         this.startHeartbeat();
         return this.config;
       }
@@ -87,6 +85,7 @@ class Process extends EventEmitter {
   }
 
   async initControlSubscriber() {
+    this.redisControlSubscriber = redis.createClient(this.redisConfig);
     await this.redisControlSubscriber.subscribe(
       `${this.keyPrefix}:${this.id}:control`
     );
@@ -94,6 +93,7 @@ class Process extends EventEmitter {
       try {
         let data = JSON.parse(message);
         let { type } = data;
+        this.emit("controlMessage", data);
         if (type == "stop") this.stop();
       } catch (err) {
         console.warn(`Can't process control message!`, err);
@@ -102,7 +102,7 @@ class Process extends EventEmitter {
   }
 
   async initProducer() {
-    this.producer = kafka.producer();
+    this.producer = this.kafka.producer();
     await this.producer.connect();
   }
 
@@ -127,11 +127,13 @@ class Process extends EventEmitter {
     process.env.NODE_ENV == "debug" && console.debug("deleting flag...");
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     await this.redisControlSubscriber.quit();
-    await this.redisClient.quit();
+    this.redisControlSubscriber = null;
     await this.producer.disconnect();
+    this.producer = null;
+    await this.logger.close();
+    this.logger = null;
     this.id = null;
     this.config = null;
-    this.isNotUsable = true;
   }
 
   async setStatus(newStatus) {
@@ -139,7 +141,7 @@ class Process extends EventEmitter {
     await this.heartbeat();
   }
 
-  async init({ logger, releaseConfig }) {
+  async init(p) {
     this.logger.info("test");
     this.logger.warn("test warning");
   }
@@ -168,7 +170,8 @@ class Process extends EventEmitter {
       });
       await this.init(this);
     } catch (err) {
-      logger.warn(`Can't initialize process!`, err);
+      console.log(err);
+      this.logger.warn(`Can't initialize process!`, err);
       await this.releaseConfig();
     }
   }
@@ -177,20 +180,33 @@ class Process extends EventEmitter {
     this.onBeforeStop = fn;
   }
 
-  async stop() {
+  async stop(restart = true) {
     if (this.stopping) return;
     this.stopping = true;
     try {
       await this.onBeforeStop();
     } catch (err) {
       this.stopping = false;
-      logger.warn(`Error when onBeforeStop`, err);
+      this.logger.warn(`Error when onBeforeStop`, err);
     }
     try {
       await this.releaseConfig();
     } catch (err) {
       console.warn(`Can't release config!`, err);
     }
+    this.stopping = false;
+    if (restart) await this.run();
+  }
+
+  static fromFunction(fn, options = {}) {
+    let p = new Process(options);
+    let methods = {};
+    for (let methodName of Object.getOwnPropertyNames(Process.prototype)) {
+      methods[methodName] = Process.prototype[methodName].bind(p);
+    }
+
+    p.init = () => fn({ ...methods, ...p });
+    return p;
   }
 }
 
