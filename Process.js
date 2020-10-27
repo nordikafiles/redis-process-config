@@ -3,13 +3,17 @@ const redis = require("async-redis");
 const sleep = require("sleep-promise");
 const _ = require("lodash");
 const winston = require("winston");
+const { Kafka } = require("kafkajs");
+
+const WinstonTransportKafka = require("./lib/WinstonTransportKafka");
 
 class Process extends EventEmitter {
   constructor({
     redisConfig = {},
     expTime = 5,
     keyPrefix = "rprocesses",
-    kafkaConfig = {},
+    logsTopic = "process-logs",
+    kafka,
   } = {}) {
     super();
     this.redisConfig = redisConfig;
@@ -17,6 +21,7 @@ class Process extends EventEmitter {
     this.keyPrefix = keyPrefix;
 
     this.redisClient = redis.createClient(redisConfig);
+    this.redisControlSubscriber = redis.createClient(redisConfig);
 
     this.id = null;
     this.config = null;
@@ -24,9 +29,16 @@ class Process extends EventEmitter {
     this.heartbeatInterval = null;
 
     this.status = "running";
+
+    this.onBeforeStop = async () => {};
+
+    this.kafka = kafka;
+    this.logsTopic = logsTopic;
   }
 
   async takeConfig() {
+    if (this.isNotUsable)
+      throw new Error("Process instance is not usable anymore");
     if (this.id) {
       return this.config;
     }
@@ -66,11 +78,32 @@ class Process extends EventEmitter {
           this.config = config;
         }
         process.env.NODE_ENV == "debug" && console.debug("received config");
+        await this.initControlSubscriber();
         this.startHeartbeat();
         return this.config;
       }
       await sleep(this.expTime);
     }
+  }
+
+  async initControlSubscriber() {
+    await this.redisControlSubscriber.subscribe(
+      `${this.keyPrefix}:${this.id}:control`
+    );
+    this.redisControlSubscriber.on("message", (channel, message) => {
+      try {
+        let data = JSON.parse(message);
+        let { type } = data;
+        if (type == "stop") this.stop();
+      } catch (err) {
+        console.warn(`Can't process control message!`, err);
+      }
+    });
+  }
+
+  async initProducer() {
+    this.producer = kafka.producer();
+    await this.producer.connect();
   }
 
   async heartbeat() {
@@ -93,8 +126,12 @@ class Process extends EventEmitter {
     clearInterval(this.heartbeatInterval);
     process.env.NODE_ENV == "debug" && console.debug("deleting flag...");
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
+    await this.redisControlSubscriber.quit();
+    await this.redisClient.quit();
+    await this.producer.disconnect();
     this.id = null;
     this.config = null;
+    this.isNotUsable = true;
   }
 
   async setStatus(newStatus) {
@@ -102,7 +139,7 @@ class Process extends EventEmitter {
     await this.heartbeat();
   }
 
-  async init() {
+  async init({ logger, releaseConfig }) {
     this.logger.info("test");
     this.logger.warn("test warning");
   }
@@ -123,12 +160,36 @@ class Process extends EventEmitter {
               winston.format.colorize()
             ),
           }),
+          new WinstonTransportKafka({
+            topic: this.logsTopic,
+            producer: this.producer,
+          }),
         ],
       });
       await this.init(this);
     } catch (err) {
-      console.warn(`Can't initialize process!`, err);
+      logger.warn(`Can't initialize process!`, err);
       await this.releaseConfig();
+    }
+  }
+
+  setOnBeforeStop(fn) {
+    this.onBeforeStop = fn;
+  }
+
+  async stop() {
+    if (this.stopping) return;
+    this.stopping = true;
+    try {
+      await this.onBeforeStop();
+    } catch (err) {
+      this.stopping = false;
+      logger.warn(`Error when onBeforeStop`, err);
+    }
+    try {
+      await this.releaseConfig();
+    } catch (err) {
+      console.warn(`Can't release config!`, err);
     }
   }
 }

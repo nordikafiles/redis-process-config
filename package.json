@@ -5,8 +5,10 @@
   "license": "MIT",
   "dependencies": {
     "async-redis": "^1.1.7",
+    "kafkajs": "^1.14.0",
     "lodash": "^4.17.20",
     "sleep-promise": "^9.0.0",
+    "uid": "^1.0.0",
     "winston": "^3.3.3"
   },
   "devDependencies": {

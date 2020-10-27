@@ -82,6 +82,28 @@ class ProcessManager {
       status,
     }));
   }
+
+  async sendMessageToProcess(id, message = { type: "stop" }) {
+    let res = await this.client.eval(
+      `
+      if redis.call('EXISTS', KEYS[1] .. ':' .. KEYS[2] .. ':status') == 1 then
+        redis.call('PUBLISH', KEYS[1] .. ':' .. KEYS[2] .. ':control', KEYS[3])
+        return 1
+      end
+      return 0
+    `,
+      3,
+      this.keyPrefix,
+      id,
+      JSON.stringify(message)
+    );
+    if (!res) throw new Error("process is not running");
+    return res;
+  }
+
+  stop(id) {
+    return this.sendMessageToProcess(id, { type: "stop" });
+  }
 }
 
 module.exports = ProcessManager;
