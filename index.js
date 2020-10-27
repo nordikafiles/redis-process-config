@@ -1,12 +1,14 @@
 const redis = require("async-redis");
 const sleep = require("sleep-promise");
 const _ = require("lodash");
+const EventEmitter = require("events");
 
-class RedisProcess {
+class RedisProcess extends EventEmitter {
   constructor(
     redisConfig = {},
     { expTime = 5, keyPrefix = "rprocesses" } = {}
   ) {
+    super();
     this.expTime = expTime;
     this.keyPrefix = keyPrefix;
 
@@ -16,6 +18,8 @@ class RedisProcess {
     this.config = null;
 
     this.heartbeatInterval = null;
+
+    this.status = {};
   }
 
   async takeConfig(initialStatus = {}) {
@@ -85,6 +89,45 @@ class RedisProcess {
     await this.client.del(`${this.keyPrefix}:${this.id}:status`);
     this.id = null;
     this.config = null;
+  }
+
+  async _run() {}
+  async run(initialStatus) {
+    await this.takeConfig(initialStatus || this.status);
+    try {
+      await this.init();
+    } catch (err) {
+      this.emit("initializationError", err);
+      await this.releaseConfig();
+    }
+    await this._run();
+  }
+
+  async _stop() {}
+  async stop() {
+    try {
+      await this._stop();
+      if (this.config) await this.releaseConfig();
+    } catch (err) {
+      console.warn(`Can't safely stop process!`, err);
+      await this.kill();
+    }
+  }
+
+  async _kill() {}
+  async kill() {
+    await this._kill();
+    if (this.config) await this.releaseConfig();
+  }
+
+  async _init() {}
+  async init() {
+    return this._init();
+  }
+
+  async restart() {
+    await this.stop();
+    this.run();
   }
 }
 
