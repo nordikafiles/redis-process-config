@@ -2,9 +2,10 @@ const EventEmitter = require("events");
 const redis = require("async-redis");
 const sleep = require("sleep-promise");
 const _ = require("lodash");
+const CONFIG = require("./config");
 
 class ProcessManager {
-  constructor(redisConfig = {}, { keyPrefix = "rprocesses" } = {}) {
+  constructor(redisConfig = {}, { keyPrefix = CONFIG.process.keyPrefix } = {}) {
     this.client = redis.createClient(redisConfig);
     this.keyPrefix = keyPrefix;
   }
