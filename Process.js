@@ -173,7 +173,11 @@ class Process extends EventEmitter {
       this.logger = winston.createLogger({
         level: "info",
         format: winston.format.json(),
-        defaultMeta: { processId: this.id, localId: this.localId },
+        defaultMeta: {
+          keyPrefix: this.keyPrefix,
+          processId: this.id,
+          localId: this.localId,
+        },
 
         transports: [
           new winston.transports.Console({
