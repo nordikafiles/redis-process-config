@@ -142,6 +142,9 @@ class Process extends EventEmitter {
     for (let topic of consumerTopics) {
       this.consumer.subscribe(topic);
     }
+  }
+
+  async runConsumer() {
     await this.consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
         Object.defineProperty(message, "valueParsed", {
@@ -250,6 +253,7 @@ class Process extends EventEmitter {
         ],
       });
       await this.init(this);
+      await this.runConsumer();
     } catch (err) {
       console.log(err);
       this.logger.warn(`Can't initialize process!`, err);
