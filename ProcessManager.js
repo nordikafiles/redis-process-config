@@ -5,7 +5,10 @@ const _ = require("lodash");
 const CONFIG = require("./config");
 
 class ProcessManager {
-  constructor(redisConfig = {}, { keyPrefix = CONFIG.process.keyPrefix } = {}) {
+  constructor({
+    redisConfig = CONFIG.redis,
+    keyPrefix = CONFIG.process.keyPrefix,
+  } = {}) {
     this.client = redis.createClient(redisConfig);
     this.keyPrefix = keyPrefix;
   }

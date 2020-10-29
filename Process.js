@@ -215,7 +215,8 @@ class Process extends EventEmitter {
   }
 
   static fromFunction(fn, options = {}) {
-    let p = new Process(options);
+    let fnOptions = fn.config || {};
+    let p = new Process({ ...options, ...fnOptions });
     let methods = {};
     for (let methodName of Object.getOwnPropertyNames(Process.prototype)) {
       methods[methodName] = Process.prototype[methodName].bind(p);
