@@ -16,6 +16,8 @@ class Process extends EventEmitter {
     keyPrefix,
     logsTopic,
     kafka,
+    consumerTopics = [],
+    consumerGroupId = ({ keyPrefix, id, config }) => `${keyPrefix}-${id}`,
     localId = 0,
   } = {}) {
     super();
@@ -33,6 +35,10 @@ class Process extends EventEmitter {
     this.status = "running";
 
     this.onBeforeStop = async () => {};
+    this.onConsumerMessage = async ({ topic, partition, message }) => {};
+
+    this.consumerTopics = consumerTopics;
+    this.consumerGroupId = consumerGroupId;
 
     this.kafka = kafka || new Kafka(CONFIG.kafka);
     this.logsTopic = logsTopic || CONFIG.process.logsTopic;
@@ -80,9 +86,10 @@ class Process extends EventEmitter {
           this.config = config;
         }
         process.env.NODE_ENV == "debug" && console.debug("received config");
+        this.startHeartbeat();
         await this.initControlSubscriber();
         await this.initProducer();
-        this.startHeartbeat();
+        await this.initConsumer();
         return this.config;
       }
       await sleep(this.expTime);
@@ -109,6 +116,50 @@ class Process extends EventEmitter {
   async initProducer() {
     this.producer = this.kafka.producer();
     await this.producer.connect();
+  }
+
+  async initConsumer() {
+    if (this.consumerTopics.length == 0) return;
+    const consumerTopics = this.consumerTopics.map((topic) => {
+      if (typeof topic == "string") topic = { topic };
+      return topic;
+    });
+
+    const admin = this.kafka.admin();
+    await admin.connect();
+    let createdTopics = await admin.listTopics();
+    await admin.createTopics({
+      topics: consumerTopics.filter(
+        ({ topic }) => !createdTopics.includes(topic)
+      ),
+    });
+    await admin.disconnect();
+
+    this.consumer = this.kafka.consumer({
+      groupId: this.consumerGroupId(this),
+    });
+    await this.consumer.connect();
+    for (let topic of consumerTopics) {
+      this.consumer.subscribe(topic);
+    }
+    await this.consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        Object.defineProperty(message, "valueParsed", {
+          get() {
+            let res = this.value;
+            try {
+              res = JSON.parse(res);
+            } catch (err) {}
+            return res;
+          },
+        });
+        await this.onConsumerMessage({
+          topic,
+          partition,
+          message,
+        });
+      },
+    });
   }
 
   async publishMessage(topic, messages = [], headers = {}) {
@@ -149,8 +200,10 @@ class Process extends EventEmitter {
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     await this.redisControlSubscriber.quit();
     this.redisControlSubscriber = null;
-    await this.producer.disconnect();
+    if (this.producer) await this.producer.disconnect();
+    if (this.consumer) await this.consumer.disconnect();
     this.producer = null;
+    this.consumer = null;
     await this.logger.close();
     this.logger = null;
     this.id = null;
@@ -183,13 +236,16 @@ class Process extends EventEmitter {
           new winston.transports.Console({
             level: "info",
             format: winston.format.combine(
+              winston.format.timestamp(),
               winston.format.colorize(),
+              // winston.format.prettyPrint(),
               winston.format.simple()
             ),
           }),
           new WinstonTransportKafka({
             topic: this.logsTopic,
             producer: this.producer,
+            format: winston.format.combine(winston.format.timestamp()),
           }),
         ],
       });
@@ -203,6 +259,10 @@ class Process extends EventEmitter {
 
   setOnBeforeStop(fn) {
     this.onBeforeStop = fn;
+  }
+
+  setOnConsumerMessage(fn) {
+    this.onConsumerMessage = fn;
   }
 
   async stop(restart = true) {
