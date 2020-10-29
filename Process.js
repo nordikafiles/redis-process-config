@@ -11,10 +11,10 @@ const WinstonTransportKafka = require("./lib/WinstonTransportKafka");
 
 class Process extends EventEmitter {
   constructor({
-    redisConfig = {},
-    expTime = 5,
-    keyPrefix = "rprocesses",
-    logsTopic = "process-logs",
+    redisConfig,
+    expTime,
+    keyPrefix,
+    logsTopic,
     kafka,
     localId = 0,
   } = {}) {
