@@ -19,9 +19,9 @@ class Process extends EventEmitter {
     localId = 0,
   } = {}) {
     super();
-    this.redisConfig = redisConfig;
-    this.expTime = expTime;
-    this.keyPrefix = keyPrefix;
+    this.redisConfig = redisConfig || CONFIG.redis;
+    this.expTime = expTime || CONFIG.process.expTime;
+    this.keyPrefix = keyPrefix || CONFIG.process.keyPrefix;
 
     this.redisClient = redis.createClient(redisConfig);
 
@@ -34,8 +34,8 @@ class Process extends EventEmitter {
 
     this.onBeforeStop = async () => {};
 
-    this.kafka = kafka;
-    this.logsTopic = logsTopic;
+    this.kafka = kafka || new Kafka(CONFIG.kafka);
+    this.logsTopic = logsTopic || CONFIG.process.logsTopic;
 
     this.localId = localId;
   }

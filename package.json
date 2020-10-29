@@ -16,5 +16,8 @@
   },
   "scripts": {
     "test": "mocha --timeout 50000 --exit"
+  },
+  "bin": {
+    "redispm": "./bin/redispm.js"
   }
 }
