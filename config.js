@@ -10,8 +10,8 @@ module.exports = {
       .map((x) => x.trim()),
   },
   redis: {
-    host: process.env.REDIS_HOST || {},
-    port: process.env.REDIS_PORT || {},
+    host: process.env.REDIS_HOST || "localhost",
+    port: process.env.REDIS_PORT || "6379",
   },
   concurrent: process.env.NUMBER_OF_CONCURRENT_PROCESSES
     ? parseInt(process.env.NUMBER_OF_CONCURRENT_PROCESSES)
