@@ -8,7 +8,7 @@ const kafka = new Kafka({
   brokers: ["localhost:9092"],
 });
 
-let p = Process.fromFunction(
+let ps = Process.multipleFromFunction(
   async ({ logger, setOnBeforeStop, stop, publishMessage }) => {
     logger.info("alala");
     setOnBeforeStop(() => {
@@ -21,4 +21,6 @@ let p = Process.fromFunction(
   { kafka }
 );
 
-p.run();
+for (let p of ps) {
+  p.run();
+}

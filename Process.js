@@ -5,6 +5,8 @@ const _ = require("lodash");
 const winston = require("winston");
 const { Kafka } = require("kafkajs");
 
+const CONFIG = require("./config");
+
 const WinstonTransportKafka = require("./lib/WinstonTransportKafka");
 
 class Process extends EventEmitter {
@@ -14,6 +16,7 @@ class Process extends EventEmitter {
     keyPrefix = "rprocesses",
     logsTopic = "process-logs",
     kafka,
+    localId = 0,
   } = {}) {
     super();
     this.redisConfig = redisConfig;
@@ -33,6 +36,8 @@ class Process extends EventEmitter {
 
     this.kafka = kafka;
     this.logsTopic = logsTopic;
+
+    this.localId = localId;
   }
 
   async takeConfig() {
@@ -163,7 +168,7 @@ class Process extends EventEmitter {
       this.logger = winston.createLogger({
         level: "info",
         format: winston.format.json(),
-        defaultMeta: { processId: this.id },
+        defaultMeta: { processId: this.id, localId: this.localId },
 
         transports: [
           new winston.transports.Console({
@@ -218,6 +223,16 @@ class Process extends EventEmitter {
 
     p.init = () => fn({ ...methods, ...p });
     return p;
+  }
+
+  static multipleFromFunction(
+    fn,
+    options = {},
+    concurrent = CONFIG.concurrent
+  ) {
+    return _.range(0, concurrent).map((localId) =>
+      Process.fromFunction(fn, { localId, ...options })
+    );
   }
 }
 
