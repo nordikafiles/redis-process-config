@@ -174,8 +174,8 @@ class Process extends EventEmitter {
           new winston.transports.Console({
             level: "info",
             format: winston.format.combine(
-              winston.format.simple(),
-              winston.format.colorize()
+              winston.format.colorize(),
+              winston.format.simple()
             ),
           }),
           new WinstonTransportKafka({
