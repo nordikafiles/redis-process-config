@@ -132,8 +132,13 @@ class Process extends EventEmitter {
   }
 
   startHeartbeat() {
-    this.heartbeatInterval = setInterval(async () => {},
-    Math.floor((this.expTime * 1000) / 2));
+    this.heartbeatInterval = setInterval(async () => {
+      try {
+        await this.heartbeat();
+      } catch (err) {
+        console.warn("heartbeat error", err);
+      }
+    }, Math.floor((this.expTime * 1000) / 2));
   }
 
   async releaseConfig() {
