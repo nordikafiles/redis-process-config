@@ -11,11 +11,9 @@
     "uid": "^1.0.0",
     "winston": "^3.3.3"
   },
-  "devDependencies": {
-    "mocha": "^8.2.0"
-  },
   "scripts": {
-    "test": "mocha --timeout 50000 --exit"
+    "test:process": "NODE_ENV=debug node ./test/test_process.js",
+    "test:manager": "NODE_ENV=debug node ./test/test_manager.js"
   },
   "bin": {
     "redispm": "./bin/redispm.js"

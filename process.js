@@ -3,47 +3,48 @@ const redis = require("async-redis");
 const sleep = require("sleep-promise");
 const _ = require("lodash");
 const winston = require("winston");
-const { Kafka } = require("kafkajs");
 
-const CONFIG = require("./config");
-
-const WinstonTransportKafka = require("./lib/WinstonTransportKafka");
+const WinstonTransportKafka = require("./lib/winston_transport_kafka");
 
 class Process extends EventEmitter {
   constructor({
     redisConfig,
-    expTime,
+    expTime = 10,
     keyPrefix,
-    logsTopic,
     kafka,
-    consumerTopics = [],
-    consumerGroupId = ({ keyPrefix, id, config }) => `${keyPrefix}-${id}`,
+    consumerTopics,
+    consumerGroupId = keyPrefix,
     localId = 0,
+    logsTopic = keyPrefix + "_logs",
   } = {}) {
     super();
-    this.redisConfig = redisConfig || CONFIG.redis;
-    this.expTime = expTime || CONFIG.process.expTime;
-    this.keyPrefix = keyPrefix || CONFIG.process.keyPrefix;
+
+    if (!redisConfig) throw new Error("redisConfig required!");
+    this.redisConfig = redisConfig;
+
+    if (!keyPrefix) throw new Error("keyPrefix required!");
+    this.keyPrefix = keyPrefix;
+
+    if (!kafka) throw new Error("kafka required!");
+    this.kafka = kafka;
 
     this.redisClient = redis.createClient(redisConfig);
+    if (this.redisConfig.password)
+      this.redisClient.auth(this.redisConfig.password);
+
+    this.expTime = expTime;
+    this.consumerTopics = consumerTopics;
+    this.consumerGroupId = consumerGroupId;
+    this.logsTopic = logsTopic;
+    this.localId = localId;
 
     this.id = null;
     this.config = null;
-
     this.heartbeatInterval = null;
-
-    this.status = "running";
-
     this.onBeforeStop = async () => {};
     this.onConsumerMessage = async ({ topic, partition, message }) => {};
 
-    this.consumerTopics = consumerTopics;
-    this.consumerGroupId = consumerGroupId;
-
-    this.kafka = kafka || new Kafka(CONFIG.kafka);
-    this.logsTopic = logsTopic || CONFIG.process.logsTopic;
-
-    this.localId = localId;
+    this.status = "running";
   }
 
   async takeConfig() {
@@ -54,24 +55,24 @@ class Process extends EventEmitter {
     while (true) {
       let res = await this.redisClient.eval(
         `
-                local process_config_keys = redis.call('KEYS', KEYS[1] .. ':*:config')
-                local process_status_keys = redis.call('KEYS', KEYS[1] .. ':*:status')
-                for i, config_key in ipairs(process_config_keys) do 
-                    local status_key_found = false
-                    for j, status_key in ipairs(process_status_keys) do
-                        if status_key:gsub(':status', '') == config_key:gsub(':config', '') then
-                            status_key_found = true
-                        end
-                    end
-                    if config_key ~= nil and not status_key_found then
-                        local process_id = config_key:gsub(':config', ''):gsub(KEYS[1] .. ':', '')
-                        local config = redis.call('GET', config_key)
-                        redis.call('SETEX', KEYS[1] .. ':' .. process_id .. ':status', KEYS[2], KEYS[3])
-                        return {process_id, config}
-                    end
-                end
-                return nil
-            `,
+          local process_config_keys = redis.call('KEYS', KEYS[1] .. ':*:config')
+          local process_status_keys = redis.call('KEYS', KEYS[1] .. ':*:status')
+          for i, config_key in ipairs(process_config_keys) do 
+            local status_key_found = false
+            for j, status_key in ipairs(process_status_keys) do
+              if status_key:gsub(':status', '') == config_key:gsub(':config', '') then
+                status_key_found = true
+              end
+            end
+            if config_key ~= nil and not status_key_found then
+              local process_id = config_key:gsub(':config', ''):gsub(KEYS[1] .. ':', '')
+              local config = redis.call('GET', config_key)
+              redis.call('SETEX', KEYS[1] .. ':' .. process_id .. ':status', KEYS[2], KEYS[3])
+              return {process_id, config}
+            end
+          end
+          return nil
+        `,
         3,
         this.keyPrefix,
         this.expTime,
@@ -136,7 +137,7 @@ class Process extends EventEmitter {
     await admin.disconnect();
 
     this.consumer = this.kafka.consumer({
-      groupId: this.consumerGroupId(this),
+      groupId: this.consumerGroupId,
     });
     await this.consumer.connect();
     for (let topic of consumerTopics) {
@@ -177,7 +178,6 @@ class Process extends EventEmitter {
   }
 
   async heartbeat() {
-    process.env.NODE_ENV == "debug" && console.debug("running setex...");
     await this.redisClient.setex(
       `${this.keyPrefix}:${this.id}:status`,
       this.expTime,
@@ -299,11 +299,7 @@ class Process extends EventEmitter {
     return p;
   }
 
-  static multipleFromFunction(
-    fn,
-    options = {},
-    concurrent = CONFIG.concurrent
-  ) {
+  static multipleFromFunction(fn, options = {}, concurrent = 1) {
     return _.range(0, concurrent).map((localId) =>
       Process.fromFunction(fn, { localId, ...options })
     );

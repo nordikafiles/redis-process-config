@@ -1,3 +1,5 @@
+# Usage
+
 ```js
 module.exports = async ({ logger, config, id, releaseConfig, kafkaPublisher, setOnBeforeStop, kafka, producer }) => {
   logger.info('got config', config)
@@ -28,7 +30,7 @@ myProcess.run()
 - setOnBeforeStop `done`
 - kafka logger `done`
 - kafkaPublisher `done`
-- fromFunction
+- fromFunction `done`
 
 **events**
 
