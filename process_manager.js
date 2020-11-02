@@ -1,8 +1,11 @@
 const redis = require("async-redis");
 const _ = require("lodash");
 
+const CONFIG = require("config");
+
 class ProcessManager {
   constructor({ redisConfig, keyPrefix } = {}) {
+    redisConfig = redisConfig || CONFIG.redis;
     if (!redisConfig) throw new Error("redisConfig required!");
     this.redisClient = redis.createClient(redisConfig);
     if (redisConfig.password) this.redisClient.auth(redisConfig.password);

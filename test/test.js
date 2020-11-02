@@ -15,5 +15,5 @@ const redisConfig = {
 
 const keyPrefix = "test_process";
 
-runProcess({ kafkaConfig, keyPrefix, redisConfig });
-runManager({ keyPrefix, redisConfig });
+runProcess({ kafkaConfig, keyPrefix });
+runManager({ keyPrefix });

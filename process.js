@@ -6,6 +6,9 @@ const winston = require("winston");
 
 const WinstonTransportKafka = require("./lib/winston_transport_kafka");
 
+const CONFIG = require("config");
+const { Kafka } = require("kafkajs");
+
 class Process extends EventEmitter {
   constructor({
     redisConfig,
@@ -19,14 +22,14 @@ class Process extends EventEmitter {
   } = {}) {
     super();
 
-    if (!redisConfig) throw new Error("redisConfig required!");
-    this.redisConfig = redisConfig;
+    this.redisConfig = redisConfig || CONFIG.redis;
+    if (!this.redisConfig) throw new Error("redisConfig required!");
 
-    if (!keyPrefix) throw new Error("keyPrefix required!");
     this.keyPrefix = keyPrefix;
+    if (!this.keyPrefix) throw new Error("keyPrefix required!");
 
-    if (!kafka) throw new Error("kafka required!");
-    this.kafka = kafka;
+    this.kafka = kafka || new Kafka(CONFIG.kafka);
+    if (!this.kafka) throw new Error("kafka required!");
 
     this.redisClient = redis.createClient(redisConfig);
     if (this.redisConfig.password)
