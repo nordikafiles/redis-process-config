@@ -1,7 +1,7 @@
 const redis = require("async-redis");
 const _ = require("lodash");
 
-const CONFIG = require("config");
+const CONFIG = require("./config");
 
 class ProcessManager {
   constructor({ redisConfig, keyPrefix } = {}) {

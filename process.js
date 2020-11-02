@@ -6,7 +6,7 @@ const winston = require("winston");
 
 const WinstonTransportKafka = require("./lib/winston_transport_kafka");
 
-const CONFIG = require("config");
+const CONFIG = require("./config");
 const { Kafka } = require("kafkajs");
 
 class Process extends EventEmitter {
