@@ -242,6 +242,7 @@ class Process extends EventEmitter {
           new winston.transports.Console({
             level: "info",
             format: winston.format.combine(
+              winston.format.errors({ stack: true }),
               winston.format.timestamp(),
               winston.format.colorize(),
               // winston.format.prettyPrint(),
@@ -251,7 +252,10 @@ class Process extends EventEmitter {
           new WinstonTransportKafka({
             topic: this.logsTopic,
             producer: this.producer,
-            format: winston.format.combine(winston.format.timestamp()),
+            format: winston.format.combine(
+              winston.format.errors({ stack: true }),
+              winston.format.timestamp()
+            ),
           }),
         ],
       });
