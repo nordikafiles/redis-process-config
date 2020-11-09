@@ -15,7 +15,7 @@ class Process extends EventEmitter {
     expTime = 10,
     keyPrefix,
     kafka,
-    consumerTopics,
+    consumerTopics = [],
     consumerGroupId = keyPrefix,
     localId = 0,
     logsTopic = keyPrefix + "_logs",
