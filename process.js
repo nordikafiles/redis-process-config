@@ -149,6 +149,7 @@ class Process extends EventEmitter {
   }
 
   async runConsumer() {
+    if (!this.consumer) return;
     await this.consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
         Object.defineProperty(message, "valueParsed", {
