@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const path = require("path");
 const { Observable } = require("rxjs");
 const { Process } = require("../");
