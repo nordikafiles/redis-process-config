@@ -227,7 +227,7 @@ class Process extends EventEmitter {
     this.logger.warn("test warning");
   }
 
-  async run() {
+  async run(restartOnError = true) {
     try {
       await this.takeConfig();
       this.logger = winston.createLogger({
@@ -266,6 +266,7 @@ class Process extends EventEmitter {
       console.log(err);
       this.logger.warn(`Can't initialize process!`, err);
       await this.releaseConfig();
+      if (restartOnError) await this.run();
     }
   }
 
