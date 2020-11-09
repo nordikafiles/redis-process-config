@@ -78,7 +78,12 @@ const tasks = new Listr(
             printLogs();
             return;
           }
-          subscriber.next(logMessage.message.toString());
+          subscriber.next(
+            (
+              (logMessage.message && logMessage.message) ||
+              logMessage
+            ).toString()
+          );
         };
         const initializedHandler = () => {
           initialized = true;
