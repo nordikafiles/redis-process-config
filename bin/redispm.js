@@ -52,7 +52,7 @@ const printLogs = () => {
     console.log(
       chalk.gray(timestamp),
       chalk.inverse(
-        (processId ? ` ID: ${processId} ` : ` LID: ${localId} `).toString()
+        (processId ? ` ${processId} ` : ` LID: ${localId} `).toString()
       ),
       level,
       text,
