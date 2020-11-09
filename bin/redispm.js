@@ -3,6 +3,7 @@ const path = require("path");
 const { Observable } = require("rxjs");
 const { Process } = require("../");
 const Listr = require("listr");
+const chalk = require("chalk");
 
 const argv = require("yargs/yargs")(process.argv.slice(2)).command(
   "$0 <filename>",
@@ -44,7 +45,19 @@ const printLogs = () => {
     delete message.message;
     let timestamp = message.timestamp;
     delete message.timestamp;
-    console.log(timestamp, level, text, JSON.stringify(message));
+    let processId = message.processId;
+    delete message.processId;
+    let localId = message.localId;
+    delete message.localId;
+    console.log(
+      chalk.gray(timestamp),
+      chalk.inverse(
+        (processId ? ` ID: ${processId} ` : ` LID: ${localId} `).toString()
+      ),
+      level,
+      text,
+      chalk.grey(JSON.stringify(message))
+    );
   }
   logsBuffer = [];
 };
