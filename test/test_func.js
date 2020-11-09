@@ -10,13 +10,11 @@ module.exports = async ({
 }) => {
   logger.info("starting");
   await sleep(1000);
-  // let timer = setInterval(() => {
-  //   logger.info({ config });
-  // }, 1000);
+  let i = 0;
   setOnBeforeStop(async () => {
     logger.info("stopping");
     clearInterval(timer);
-    await sleep(1000);
+    await sleep(2000);
     logger.info("stopped");
   });
   setOnConsumerMessage(({ topic, message }) => {
@@ -27,5 +25,14 @@ module.exports = async ({
   await sleep(1000);
   logger.info("done");
   await sleep(1000);
+
+  let timer = setInterval(() => {
+    logger.info(i++);
+  }, 1000);
+
   // stop();
+};
+
+module.exports.config = {
+  keyPrefix: "test_processes",
 };

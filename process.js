@@ -5,6 +5,7 @@ const _ = require("lodash");
 const winston = require("winston");
 
 const WinstonTransportKafka = require("./lib/winston_transport_kafka");
+const WinstonTransportEvents = require("./lib/winston_transport_events");
 
 const CONFIG = require("./config");
 const { Kafka } = require("kafkajs");
@@ -35,6 +36,8 @@ class Process extends EventEmitter {
     if (this.redisConfig.password)
       this.redisClient.auth(this.redisConfig.password);
 
+    this.silentLoggers = {};
+
     this.expTime = expTime;
     this.consumerTopics = consumerTopics;
     this.consumerGroupId = consumerGroupId;
@@ -54,8 +57,8 @@ class Process extends EventEmitter {
     if (this.id) {
       return this.config;
     }
-    process.env.NODE_ENV == "debug" && console.debug("waiting for config");
-    while (true) {
+    this.logger.info("waiting for config...");
+    for (let i = 0; ; i++) {
       let res = await this.redisClient.eval(
         `
           local process_config_keys = redis.call('KEYS', KEYS[1] .. ':*:config')
@@ -89,14 +92,16 @@ class Process extends EventEmitter {
         } catch (err) {
           this.config = config;
         }
-        process.env.NODE_ENV == "debug" && console.debug("received config");
+        this.logger.info("received config");
         this.startHeartbeat();
         await this.initControlSubscriber();
         await this.initProducer();
         await this.initConsumer();
         return this.config;
       }
-      await sleep(this.expTime);
+      await sleep(this.expTime * 500);
+      if (i * this.expTime * 500 > this.expTime * 1000)
+        this.emit("configurationTimeout");
     }
   }
 
@@ -112,7 +117,7 @@ class Process extends EventEmitter {
         this.emit("controlMessage", data);
         if (type == "stop") this.stop();
       } catch (err) {
-        console.warn(`Can't process control message!`, err);
+        this.logger.warn(`Can't process control message!`, err);
       }
     });
   }
@@ -194,16 +199,17 @@ class Process extends EventEmitter {
       try {
         await this.heartbeat();
       } catch (err) {
-        console.warn("heartbeat error", err);
+        this.logger.warn("heartbeat error", err);
       }
     }, Math.floor((this.expTime * 1000) / 2));
   }
 
   async releaseConfig() {
+    if (!this.config) return;
     process.env.NODE_ENV == "debug" &&
-      console.debug("clearing heartbeat interval...");
+      this.logger.debug("clearing heartbeat interval...");
     clearInterval(this.heartbeatInterval);
-    process.env.NODE_ENV == "debug" && console.debug("deleting flag...");
+    process.env.NODE_ENV == "debug" && this.logger.debug("deleting flag...");
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     await this.redisControlSubscriber.quit();
     this.redisControlSubscriber = null;
@@ -211,8 +217,7 @@ class Process extends EventEmitter {
     if (this.consumer) await this.consumer.disconnect();
     this.producer = null;
     this.consumer = null;
-    await this.logger.close();
-    this.logger = null;
+    await this.initLogger();
     this.id = null;
     this.config = null;
   }
@@ -229,50 +234,77 @@ class Process extends EventEmitter {
 
   async run(restartOnError = true) {
     try {
+      await this.initLogger();
       await this.takeConfig();
-      this.logger = winston.createLogger({
-        level: "info",
-        format: winston.format.json(),
-        defaultMeta: {
-          keyPrefix: this.keyPrefix,
-          processId: this.id,
-          localId: this.localId,
-        },
-
-        transports: [
-          new winston.transports.Console({
-            level: "info",
-            format: winston.format.combine(
-              winston.format.errors({ stack: true }),
-              winston.format.timestamp(),
-              winston.format.colorize(),
-              // winston.format.prettyPrint(),
-              winston.format.simple()
-            ),
-          }),
-          new WinstonTransportKafka({
-            topic: this.logsTopic,
-            producer: this.producer,
-            format: winston.format.combine(
-              winston.format.errors({ stack: true }),
-              winston.format.timestamp()
-            ),
-          }),
-        ],
-      });
+      await this.initLogger();
       await this.init(this);
       await this.runConsumer();
+      this.emit("initialized", this.id);
     } catch (err) {
-      console.log(err);
-      this.logger.warn(`Can't initialize process!`, err);
+      this.logger.warn(`Can't initialize process! Error: ${err.message}`);
       await this.releaseConfig();
+      this.emit("initializationError", err);
       if (restartOnError) {
-        console.info("\n\nRestarting process in 5s...\n\n");
+        this.logger.info("\n\nRestarting process in 5s...\n\n");
         await sleep(5000);
-        console.info("\n\nRestarting process...\n\n");
+        this.logger.info("\n\nRestarting process...\n\n");
         await this.run();
       }
     }
+  }
+
+  async initLogger() {
+    if (this.logger) await this.logger.close();
+    let transports = [
+      new winston.transports.Console({
+        name: "stdout-logger",
+        level: "info",
+        format: winston.format.combine(
+          winston.format.errors({ stack: true }),
+          winston.format.timestamp(),
+          winston.format.colorize(),
+          // winston.format.prettyPrint(),
+          winston.format.simple()
+        ),
+        silent: this.silentLoggers["stdout-logger"],
+      }),
+
+      new WinstonTransportEvents({
+        onLogMessage: (message) => this.emit("logMessage", message),
+        format: winston.format.combine(
+          winston.format.errors({ stack: true }),
+          winston.format.timestamp(),
+          winston.format.colorize(),
+          winston.format.prettyPrint(),
+          winston.format.simple()
+        ),
+      }),
+    ];
+
+    if (this.producer) {
+      transports.push(
+        new WinstonTransportKafka({
+          topic: this.logsTopic,
+          producer: this.producer,
+          format: winston.format.combine(
+            winston.format.errors({ stack: true }),
+            winston.format.timestamp()
+          ),
+        })
+      );
+    }
+
+    this.logger = winston.createLogger({
+      level: "info",
+      format: winston.format.json(),
+      defaultMeta: {
+        keyPrefix: this.keyPrefix,
+        processId: this.id,
+        localId: this.localId,
+      },
+
+      transports,
+    });
   }
 
   setOnBeforeStop(fn) {
@@ -281,6 +313,13 @@ class Process extends EventEmitter {
 
   setOnConsumerMessage(fn) {
     this.onConsumerMessage = fn;
+  }
+
+  setSilentLogger(name = "stdout-logger", silent = true) {
+    this.silentLoggers[name] = silent;
+    if (!this.logger) return;
+    let transport = this.logger.transports.find((x) => x.name == name);
+    transport.silent = silent;
   }
 
   async stop(restart = true) {
@@ -295,9 +334,10 @@ class Process extends EventEmitter {
     try {
       await this.releaseConfig();
     } catch (err) {
-      console.warn(`Can't release config!`, err);
+      this.logger.warn(`Can't release config!`, err);
     }
     this.stopping = false;
+    this.emit("stopped", {});
     if (restart) await this.run();
   }
 
