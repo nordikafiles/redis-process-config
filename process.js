@@ -266,7 +266,12 @@ class Process extends EventEmitter {
       console.log(err);
       this.logger.warn(`Can't initialize process!`, err);
       await this.releaseConfig();
-      if (restartOnError) await this.run();
+      if (restartOnError) {
+        console.info("Restarting process in 5s...");
+        await sleep(5000);
+        console.info("Restarting process...");
+        await this.run();
+      }
     }
   }
 
