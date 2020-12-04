@@ -136,6 +136,7 @@ class Process extends EventEmitter {
     if (this.consumerTopics.length == 0) return;
     const consumerTopics = this.consumerTopics.map((topic) => {
       if (typeof topic == "string") topic = { topic };
+      if (topic.fromBeginning === undefined) topic.fromBeginning = true;
       return topic;
     });
 
@@ -154,7 +155,7 @@ class Process extends EventEmitter {
     });
     await this.consumer.connect();
     for (let topic of consumerTopics) {
-      this.consumer.subscribe(topic, { fromBeginning: true });
+      this.consumer.subscribe(topic);
     }
   }
 
