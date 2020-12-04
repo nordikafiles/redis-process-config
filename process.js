@@ -154,6 +154,8 @@ class Process extends EventEmitter {
       groupId: this.consumerGroupId + this.id,
     });
     await this.consumer.connect();
+
+    console.log({ consumerTopics });
     for (let topic of consumerTopics) {
       this.consumer.subscribe(topic);
     }
