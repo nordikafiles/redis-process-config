@@ -150,6 +150,9 @@ class Process extends EventEmitter {
     });
     await admin.disconnect();
 
+    console.log({
+      groupId: this.consumerGroupId + this.id,
+    });
     this.consumer = this.kafka.consumer({
       groupId: this.consumerGroupId + this.id,
     });
