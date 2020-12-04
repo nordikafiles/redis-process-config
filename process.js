@@ -154,7 +154,7 @@ class Process extends EventEmitter {
     });
     await this.consumer.connect();
     for (let topic of consumerTopics) {
-      this.consumer.subscribe(topic);
+      this.consumer.subscribe(topic, { fromBeginning: true });
     }
   }
 
