@@ -261,7 +261,10 @@ class Process extends EventEmitter {
   }
 
   async initLogger() {
-    if (this.logger) await this.logger.close();
+    if (this.logger) {
+      await this.logger.close();
+      this.logger = null;
+    }
     let transports = [
       new winston.transports.Console({
         name: "stdout-logger",
