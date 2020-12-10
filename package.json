@@ -18,7 +18,7 @@
     "yargs": "^16.1.0"
   },
   "scripts": {
-    "test:process": "NODE_ENV=debug node ./test/test_process.js",
+    "test:process": "NODE_ENV=debug node bin/redispm.js ./test/test_func.js",
     "test:manager": "NODE_ENV=debug node ./test/test_manager.js"
   },
   "bin": {

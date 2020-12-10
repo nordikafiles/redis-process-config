@@ -11,6 +11,7 @@ module.exports = async ({
   logger.info("starting");
   await sleep(1000);
   let i = 0;
+  let timer;
   setOnBeforeStop(async () => {
     logger.info("stopping");
     clearInterval(timer);
@@ -26,7 +27,7 @@ module.exports = async ({
   logger.info("done");
   await sleep(1000);
 
-  let timer = setInterval(() => {
+  timer = setInterval(() => {
     logger.info(i++);
   }, 1000);
 

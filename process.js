@@ -36,7 +36,9 @@ class Process extends EventEmitter {
     if (!kafka && !defaultKafkaInstance) {
       defaultKafkaInstance = new Kafka({
         ...CONFIG.kafka,
-        logCreator: getKafkaLogCreator,
+        logCreator: getKafkaLogCreator((message) =>
+          this.emit("logMessage", message)
+        ),
       });
     }
     this.kafka = kafka || defaultKafkaInstance;
