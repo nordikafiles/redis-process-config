@@ -127,7 +127,19 @@ const contentFunc = async () => {
     allProcessesInitialized = true;
   } else {
     allProcessesInitialized = true;
-    listrArgs.map((x) => x.task().toPromise());
+    listrArgs.map(async (x) => {
+      try {
+        await x.task().toPromise();
+      } catch (err) {
+        logsBuffer.push({
+          level: "warn",
+          localId: "redispm",
+          message: err.message,
+          timestamp: new Date().toISOString(),
+        });
+        printLogs();
+      }
+    });
   }
   printLogs();
 };
