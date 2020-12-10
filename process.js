@@ -4,6 +4,8 @@ const sleep = require("sleep-promise");
 const _ = require("lodash");
 const winston = require("winston");
 
+const getKafkaLogCreator = require("./lib/get_kafka_log_creator");
+
 const WinstonTransportKafka = require("./lib/winston_transport_kafka");
 const WinstonTransportEvents = require("./lib/winston_transport_events");
 
@@ -32,7 +34,10 @@ class Process extends EventEmitter {
     if (!this.keyPrefix) throw new Error("keyPrefix required!");
 
     if (!kafka && !defaultKafkaInstance) {
-      defaultKafkaInstance = new Kafka(CONFIG.kafka);
+      defaultKafkaInstance = new Kafka({
+        ...CONFIG.kafka,
+        logCreator: getKafkaLogCreator,
+      });
     }
     this.kafka = kafka || defaultKafkaInstance;
     if (!this.kafka) throw new Error("kafka required!");

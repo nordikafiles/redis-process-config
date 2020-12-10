@@ -8,6 +8,7 @@ module.exports = {
     brokers: (process.env.KAFKA_BROKERS || "localhost:9092")
       .split(",")
       .map((x) => x.trim()),
+    // logLevel: "ERROR",
   },
   redis: {
     host: process.env.REDIS_HOST || "localhost",

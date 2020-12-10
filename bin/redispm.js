@@ -73,8 +73,8 @@ const tasks = new Listr(
       return new Observable(async (subscriber) => {
         let initialized = false;
         const logMessageHandler = (logMessage) => {
+          logsBuffer.push(logMessage);
           if (initialized) {
-            logsBuffer.push(logMessage);
             printLogs();
             return;
           }
