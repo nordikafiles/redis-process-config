@@ -13,6 +13,7 @@ module.exports = {
   redis: {
     host: process.env.REDIS_HOST || "localhost",
     port: process.env.REDIS_PORT || "6379",
+    password: process.env.REDIS_PASSWORD || undefined,
   },
   concurrent: process.env.NUMBER_OF_CONCURRENT_PROCESSES
     ? parseInt(process.env.NUMBER_OF_CONCURRENT_PROCESSES)

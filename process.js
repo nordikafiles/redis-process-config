@@ -14,6 +14,12 @@ const { Kafka } = require("kafkajs");
 
 let defaultKafkaInstance = null;
 
+const createRedisClient = (config) => {
+  let redisClient = redis.createClient(config);
+  if (config.password) redisClient.auth(config.password);
+  return redisClient;
+};
+
 class Process extends EventEmitter {
   constructor({
     redisConfig,
@@ -48,7 +54,7 @@ class Process extends EventEmitter {
     this.kafka = kafka || defaultKafkaInstance;
     if (!this.kafka) throw new Error("kafka required!");
 
-    this.redisClient = redis.createClient(this.redisConfig);
+    this.redisClient = createRedisClient(this.redisConfig);
     if (this.redisConfig.password)
       this.redisClient.auth(this.redisConfig.password);
 
@@ -122,7 +128,7 @@ class Process extends EventEmitter {
   }
 
   async initControlSubscriber() {
-    this.redisControlSubscriber = redis.createClient(this.redisConfig);
+    this.redisControlSubscriber = createRedisClient(this.redisConfig);
     await this.redisControlSubscriber.subscribe(
       `${this.keyPrefix}:${this.id}:control`
     );
