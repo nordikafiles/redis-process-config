@@ -227,6 +227,7 @@ class Process extends EventEmitter {
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     await this.redisControlSubscriber.quit();
     this.redisControlSubscriber = null;
+    if (this.logger) await this.logger.close();
     if (this.producer) await this.producer.disconnect();
     if (this.consumer) await this.consumer.disconnect();
     this.producer = null;
