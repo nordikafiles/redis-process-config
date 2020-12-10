@@ -48,7 +48,7 @@ class Process extends EventEmitter {
     this.kafka = kafka || defaultKafkaInstance;
     if (!this.kafka) throw new Error("kafka required!");
 
-    this.redisClient = redis.createClient(redisConfig);
+    this.redisClient = redis.createClient(this.redisConfig);
     if (this.redisConfig.password)
       this.redisClient.auth(this.redisConfig.password);
 
