@@ -236,7 +236,7 @@ class Process extends EventEmitter {
       await this.redisClient.del(`${this.keyPrefix}:${this.id}:config`);
     process.env.NODE_ENV == "debug" && this.logger.debug("deleting flag...");
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
-    await this.redisControlSubscriber.quit();
+    if (this.redisControlSubscriber) await this.redisControlSubscriber.quit();
     this.redisControlSubscriber = null;
     if (this.logger) await this.logger.close();
     await sleep(1000);
