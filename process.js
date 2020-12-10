@@ -38,7 +38,7 @@ class Process extends EventEmitter {
         ...CONFIG.kafka,
         logCreator: getKafkaLogCreator((message) =>
           this.emit("logMessage", {
-            message,
+            ...message,
             processId: this.id,
             localId: this.localId,
           })
