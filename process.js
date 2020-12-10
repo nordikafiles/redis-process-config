@@ -232,6 +232,8 @@ class Process extends EventEmitter {
     if (!this.config) return;
     this.logger.debug("clearing heartbeat interval...");
     clearInterval(this.heartbeatInterval);
+    if (typeof this.config == "object" && this.config.__deleteAfterStop)
+      await this.redisClient.del(`${this.keyPrefix}:${this.id}:config`);
     process.env.NODE_ENV == "debug" && this.logger.debug("deleting flag...");
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     await this.redisControlSubscriber.quit();
