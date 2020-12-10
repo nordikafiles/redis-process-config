@@ -37,7 +37,11 @@ class Process extends EventEmitter {
       defaultKafkaInstance = new Kafka({
         ...CONFIG.kafka,
         logCreator: getKafkaLogCreator((message) =>
-          this.emit("logMessage", message)
+          this.emit("logMessage", {
+            message,
+            processId: this.id,
+            localId: this.localId,
+          })
         ),
       });
     }
@@ -220,14 +224,14 @@ class Process extends EventEmitter {
 
   async releaseConfig() {
     if (!this.config) return;
-    process.env.NODE_ENV == "debug" &&
-      this.logger.debug("clearing heartbeat interval...");
+    this.logger.debug("clearing heartbeat interval...");
     clearInterval(this.heartbeatInterval);
     process.env.NODE_ENV == "debug" && this.logger.debug("deleting flag...");
     await this.redisClient.del(`${this.keyPrefix}:${this.id}:status`);
     await this.redisControlSubscriber.quit();
     this.redisControlSubscriber = null;
     if (this.logger) await this.logger.close();
+    await sleep(1000);
     if (this.producer) await this.producer.disconnect();
     if (this.consumer) await this.consumer.disconnect();
     this.producer = null;
